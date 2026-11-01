@@ -115,7 +115,7 @@
         h1 {
             margin: 0;
             color: var(--accent);
-            font-size: clamp(28px, 4.5vw, 48px);
+            font-size: clamp(24px, 3.5vw, 58px);
             font-weight: 800;
             letter-spacing: .035em;
             line-height: 1.1;
@@ -755,6 +755,22 @@
                 musicLabel.textContent = isPlaying ? "♫ Wyłącz muzykę" : "♫ Włącz muzykę";
             }
 
+            function setServerName(serverName) {
+                var serverNameElement = document.getElementById("servername");
+                var studioSuffix = serverName.match(/^(.*?)\s+CDN\s+STUDIOS$/i);
+                if (!studioSuffix || !studioSuffix[1].trim()) {
+                    serverNameElement.textContent = serverName;
+                    return;
+                }
+
+                serverNameElement.textContent = "";
+                serverNameElement.appendChild(document.createTextNode(studioSuffix[1].trim()));
+                serverNameElement.appendChild(document.createElement("br"));
+                serverNameElement.appendChild(document.createTextNode("CDN"));
+                serverNameElement.appendChild(document.createElement("br"));
+                serverNameElement.appendChild(document.createTextNode("STUDIOS"));
+            }
+
             function formatPlaytime(seconds) {
                 var totalMinutes = Math.floor(seconds / 60);
                 var hours = Math.floor(totalMinutes / 60);
@@ -805,7 +821,7 @@
             window.GameDetails = function (servername, serverurl, mapname, maxplayers, steamid, gamemode) {
                 if (typeof servername === "string" && servername.trim()) {
                     var serverName = servername.trim();
-                    document.getElementById("servername").textContent = serverName;
+                    setServerName(serverName);
                     document.title = serverName + " — ładowanie";
                 }
                 if (mapname) document.getElementById("mapname").textContent = mapname;
