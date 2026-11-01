@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#05080b">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Ładowanie serwera</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            font-family: "Segoe UI", Arial, sans-serif;
+            color: #f5f7fa;
+            background: #05080b;
+            --accent: #00aaff;
+            --panel: rgba(0, 0, 0, .62);
+            --muted: #b7c0ca;
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body {
+            width: 100%;
+            min-width: 320px;
+            min-height: 100%;
+            margin: 0;
+        }
+
+        body {
+            height: 100vh;
+            overflow: hidden;
+            background: #05080b;
+        }
+
+        #background {
+            position: fixed;
+            z-index: 0;
+            inset: 0;
+            transform: scale(1.015);
+        }
+
+        .background-image {
+            position: absolute;
+            inset: 0;
+            background-position: center;
+            background-size: cover;
+            background-repeat: no-repeat;
+            opacity: 0;
+            transform: scale(1.12) rotate(0.6deg);
+            transform-origin: center;
+            transition: opacity 1.5s ease-in-out;
+        }
+
+        .background-image.is-visible {
+            opacity: 1;
+            animation: background-drift 12s ease-in-out both;
+        }
+
+        @keyframes background-drift {
+            from { transform: scale(1.04) rotate(-0.6deg); }
+            to { transform: scale(1.12) rotate(0.6deg); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .background-image { transition: none; }
+            .background-image.is-visible {
+                animation: none;
+                transform: scale(1.05);
+            }
+        }
+
+        .backdrop {
+            position: fixed;
+            z-index: 1;
+            inset: 0;
+            background: rgba(0, 0, 0, .48);
+        }
+
+        .layout {
+            position: relative;
+            z-index: 2;
+            display: grid;
+            width: min(100%, 1740px);
+            height: 100%;
+            margin: 0 auto;
+            padding: clamp(14px, 2vw, 32px);
+            grid-template-rows: auto auto auto;
+            align-content: center;
+            gap: 12px;
+        }
+
+        .panel {
+            min-width: 0;
+            border: 3px solid var(--accent);
+            border-radius: 17px;
+            background: var(--panel);
+            -webkit-backdrop-filter: blur(1px);
+            backdrop-filter: blur(1px);
+            box-shadow: 0 0 16px rgba(0, 170, 255, .18);
+        }
+
+        .server-header {
+            display: grid;
+            width: min(76vw, 1280px);
+            min-height: 78px;
+            justify-self: center;
+            padding: 8px 18px;
+            place-items: center;
+        }
+
+        h1 {
+            margin: 0;
+            color: var(--accent);
+            font-size: clamp(28px, 4.5vw, 58px);
+            font-weight: 800;
+            letter-spacing: .035em;
+            line-height: 1.1;
+            text-align: center;
+            text-shadow: 0 0 15px rgba(0, 170, 255, .24);
+            text-transform: uppercase;
+        }
+
+        .columns {
+            display: grid;
+            width: min(76vw, 1280px);
+            min-height: 0;
+            margin: 0 auto;
+            grid-template-columns: minmax(160px, 1fr) minmax(280px, 2fr) minmax(160px, 1fr);
+            grid-template-rows: auto auto;
+            column-gap: 8px;
+            row-gap: 12px;
+        }
+
+        .side-panel:first-child {
+            grid-column: 1;
+            grid-row: 1 / span 2;
+        }
+
+        .side-panel:last-child {
+            grid-column: 3;
+            grid-row: 1 / span 2;
+        }
+
+        @media (min-width: 761px) {
+            .side-panel {
+                contain: size;
+                overflow: hidden;
+            }
+        }
+
+        .side-panel {
+            display: flex;
+            min-height: 0;
+            flex-direction: column;
+            padding: 15px 12px;
+            border-width: 3px;
+            border-radius: 24px;
+        }
+
+        h2 {
+            margin: 0;
+            font-size: clamp(14px, 1.25vw, 18px);
+            font-weight: 750;
+            text-align: center;
+        }
+
+        .side-heading {
+            flex: 0 0 auto;
+            padding: 2px 0 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, .18);
+        }
+
+        .mode-list {
+            display: grid;
+            min-height: 0;
+            margin-top: 10px;
+            padding: 6px 2px;
+            overflow: hidden;
+            gap: 7px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            scrollbar-width: none;
+            -webkit-mask-image: linear-gradient(to bottom, transparent, #000 18px, #000 calc(100% - 18px), transparent);
+            mask-image: linear-gradient(to bottom, transparent, #000 18px, #000 calc(100% - 18px), transparent);
+        }
+
+        .mode-list::-webkit-scrollbar { display: none; }
+
+        .mode-item {
+            display: grid;
+            min-width: 0;
+            min-height: 38px;
+            padding: 4px 3px;
+            border: 1px solid rgba(0, 170, 255, .34);
+            border-radius: 6px;
+            background: rgba(0, 170, 255, .09);
+            font-size: 12px;
+            letter-spacing: .025em;
+            line-height: 1.15;
+            overflow-wrap: anywhere;
+            text-align: center;
+            place-items: center;
+        }
+
+        .center-column {
+            display: contents;
+        }
+
+        .welcome-panel {
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        .server-info {
+            grid-column: 2;
+            grid-row: 2;
+        }
+
+        .welcome-panel, .server-info {
+            display: flex;
+            min-height: 0;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 36px 20px;
+            text-align: center;
+        }
+
+        .server-info { padding: 87px 20px; }
+
+        .welcome-panel {
+            display: grid;
+            grid-template-columns: clamp(64px, 7vw, 88px) minmax(0, max-content);
+            align-items: center;
+            justify-content: center;
+            gap: clamp(8px, 1vw, 14px);
+            padding: 81px 22px;
+        }
+
+        .profile-avatar {
+            display: grid;
+            width: 100%;
+            aspect-ratio: 1;
+            flex: 0 0 auto;
+            overflow: hidden;
+            border: 3px solid var(--accent);
+            border-radius: 50%;
+            color: var(--accent);
+            background: rgba(0, 170, 255, .1);
+            font-size: 28px;
+            font-weight: 800;
+            place-items: center;
+            text-shadow: 0 0 12px rgba(0, 170, 255, .4);
+        }
+
+        .profile-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .profile-details {
+            position: relative;
+            display: flex;
+            min-width: 0;
+            align-items: center;
+            text-align: left;
+        }
+
+        .profile-greeting {
+            position: absolute;
+            top: calc(50% - 38px);
+            margin: 0;
+            color: var(--muted);
+            font-size: clamp(12px, 1.35vw, 17px);
+        }
+
+        .profile-details h2, .server-info h2 {
+            font-size: clamp(19px, 2.5vw, 32px);
+            line-height: 1.15;
+        }
+
+        .profile-details h2 {
+            margin: 0;
+            overflow: hidden;
+            font-weight: 700;
+            text-align: left;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .server-info { gap: 5px; }
+
+        .server-info h2,
+        .server-info .info-row {
+            width: 100%;
+            text-align: center;
+        }
+
+        .server-info h2 { transform: translateY(-8px); }
+
+        .info-row {
+            margin: 0;
+            color: var(--muted);
+            font-size: clamp(13px, 1.2vw, 16px);
+        }
+
+        .info-row span {
+            color: #fff;
+            font-weight: 700;
+        }
+
+        .rules {
+            display: grid;
+            min-height: 0;
+            margin: 10px 0 0;
+            padding: 0 2px 0 22px;
+            overflow: auto;
+            color: #e2e7ec;
+            font-size: clamp(11px, 1vw, 13px);
+            line-height: 1.6;
+            gap: 8px;
+            scrollbar-color: var(--accent) transparent;
+            scrollbar-width: thin;
+        }
+
+        .loading-panel {
+            width: min(76vw, 1280px);
+            justify-self: center;
+            padding: 11px 15px 12px;
+            border-width: 3px;
+            border-radius: 13px;
+        }
+
+        .loading-top, .loading-bottom {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .loading-top {
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        #progress-label {
+            flex: 0 0 auto;
+            font-weight: 700;
+        }
+
+        .progress-track {
+            height: 15px;
+            overflow: hidden;
+            border: 2px solid rgba(0, 170, 255, .9);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, .82);
+        }
+
+        .progress-bar {
+            width: 0;
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, #008ed8, #36c7ff);
+            box-shadow: 0 0 12px rgba(0, 170, 255, .6);
+            transition: width .3s ease;
+        }
+
+        .loading-bottom {
+            min-height: 26px;
+            margin-top: 7px;
+        }
+
+        #status {
+            min-width: 0;
+            margin: 0;
+            overflow: hidden;
+            color: var(--muted);
+            font-size: 11px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .music-button {
+            flex: 0 0 auto;
+            padding: 5px 10px;
+            border: 1px solid rgba(0, 170, 255, .7);
+            border-radius: 6px;
+            background: rgba(0, 170, 255, .12);
+            color: #fff;
+            cursor: pointer;
+            font: inherit;
+            font-size: 11px;
+        }
+
+        .music-button:hover, .music-button:focus-visible {
+            background: rgba(0, 170, 255, .28);
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        @media (max-width: 760px) {
+            body {
+                height: auto;
+                min-height: 100vh;
+                overflow: auto;
+            }
+
+            .layout {
+                height: auto;
+                min-height: 100vh;
+                padding: 18px;
+                grid-template-rows: auto auto auto;
+                gap: 14px;
+            }
+
+            .columns {
+                width: 100%;
+                height: auto;
+                margin: 0;
+                grid-template-columns: minmax(0, 1fr);
+                grid-template-rows: auto auto auto;
+                row-gap: 14px;
+            }
+
+            .server-header, .loading-panel {
+                width: 100%;
+            }
+
+            .side-panel { min-height: 210px; }
+            .side-panel:first-child { height: 210px; }
+            .side-panel:first-child, .side-panel:last-child,
+            .welcome-panel, .server-info {
+                grid-column: auto;
+                grid-row: auto;
+            }
+            .center-column {
+                display: grid;
+                min-height: 330px;
+                align-content: center;
+                gap: 12px;
+                grid-template-rows: auto auto;
+            }
+            .welcome-panel {
+                grid-template-columns: 58px minmax(0, max-content);
+                gap: 8px;
+                padding: 14px 12px;
+            }
+            .profile-greeting { font-size: 12px; }
+            .profile-details h2 { font-size: 20px; }
+            .mode-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .rules { grid-template-columns: 1fr; }
+        }
+
+        @media (max-height: 640px) and (min-width: 761px) {
+            .layout { padding-top: 16px; padding-bottom: 16px; gap: 10px; }
+            .server-header { min-height: 58px; }
+            .side-panel { padding-top: 9px; padding-bottom: 9px; }
+            .welcome-mark { width: 48px; margin-bottom: 5px; }
+            .welcome-panel, .server-info { padding: 10px; }
+            .loading-panel { padding-top: 7px; padding-bottom: 7px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="background" aria-hidden="true">
+        <div class="background-image is-visible" id="background-image-a" style="background-image: url('cdn_01.jpg')"></div>
+        <div class="background-image" id="background-image-b"></div>
+    </div>
+    <div class="backdrop" aria-hidden="true"></div>
+
+    <div class="layout">
+        <header class="panel server-header">
+            <h1 id="servername">Ładowanie serwera...</h1>
+        </header>
+
+        <main class="columns">
+            <section class="panel side-panel" aria-labelledby="modes-heading">
+                <h2 class="side-heading" id="modes-heading">Dostępne tryby</h2>
+                <div class="mode-list" id="modes-list">
+                    <div class="mode-item">Death Run</div>
+                    <div class="mode-item">Stop it, Slender!</div>
+                    <div class="mode-item">Slashers</div>
+                    <div class="mode-item">TTT</div>
+                    <div class="mode-item">Prop Hunt</div>
+                    <div class="mode-item">Fazbear Hunt</div>
+                    <div class="mode-item">The Floor Is Lava</div>
+                    <div class="mode-item">Melon Bomber</div>
+                    <div class="mode-item">Trash Compactor</div>
+                    <div class="mode-item">Among Us [BETA]</div>
+                    <div class="mode-item">Murderer</div>
+                    <div class="mode-item">Hide And Seek</div>
+                    <div class="mode-item">Elevator: Source</div>
+                    <div class="mode-item">Zombie Survival</div>
+                    <div class="mode-item">You Touched It Last</div>
+                    <div class="mode-item">The Hidden</div>
+                    <div class="mode-item">Cops And Runners</div>
+                    <div class="mode-item">Slendytubbies</div>
+                    <div class="mode-item">SCP Classic Breach</div>
+                    <div class="mode-item">Wario-Ware</div>
+                    <div class="mode-item">Dropzone</div>
+                    <div class="mode-item">Puzzle [AWARIA]</div>
+                    <div class="mode-item">Ragdoll Combat [WYŁĄCZONE]</div>
+                    <div class="mode-item">Guess Who [WYŁĄCZONE]</div>
+                    <div class="mode-item">Smash [WYŁĄCZONE]</div>
+                    <div class="mode-item">Bug Boys [WYŁĄCZONE]</div>
+                    <div class="mode-item">MelonRacer 2.0 [WYŁĄCZONE]</div>
+                    <div class="mode-item">MiniGames [WYŁĄCZONE]</div>
+                    <div class="mode-item">Divers Vs Sharks [WYŁĄCZONE]</div>
+                </div>
+            </section>
+
+            <div class="center-column">
+                <section class="panel welcome-panel" aria-label="Profil gracza">
+                    <div class="profile-avatar" id="profile-avatar">
+                        <span id="avatar-fallback" aria-hidden="true">?</span>
+                        <img id="avatar-image" alt="Avatar gracza" hidden>
+                    </div>
+                    <div class="profile-details">
+                        <p class="profile-greeting">Witamy!</p>
+                        <h2 id="player-name">Oczekiwanie…</h2>
+                    </div>
+                </section>
+
+                <section class="panel server-info" aria-label="Informacje o serwerze">
+                    <h2>Multi-Gamemode</h2>
+                    <p class="info-row">Tryb: <span id="gamemode">Oczekiwanie…</span></p>
+                    <p class="info-row">Mapa: <span id="mapname">Oczekiwanie…</span></p>
+                </section>
+            </div>
+
+            <section class="panel side-panel" aria-labelledby="rules-heading">
+                <h2 class="side-heading" id="rules-heading">Regulamin</h2>
+                <ol class="rules">
+                    <li>Szanuj innych graczy i administrację.</li>
+                    <li>Zakaz używania cheatów i wykorzystywania błędów gry.</li>
+                    <li>Nie spamuj na czacie głosowym ani tekstowym.</li>
+                    <li>Przestrzegaj zasad aktualnego trybu gry.</li>
+                    <li>Nie publikuj treści obraźliwych ani nieodpowiednich.</li>
+                    <li>W razie problemu skontaktuj się z administracją.</li>
+                    <li>Baw się dobrze!</li>
+                </ol>
+            </section>
+        </main>
+
+        <section class="panel loading-panel" aria-label="Postęp ładowania">
+            <div class="loading-top">
+                <span id="loading-label">Ładowanie serwera</span>
+                <span id="progress-label">Łączenie…</span>
+            </div>
+            <div
+                class="progress-track"
+                id="progress-track"
+                role="progressbar"
+                aria-label="Postęp pobierania plików"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-valuenow="0">
+                <div class="progress-bar" id="progress-bar"></div>
+            </div>
+            <div class="loading-bottom">
+                <p id="status" aria-live="polite">Oczekiwanie na połączenie z serwerem…</p>
+                <button class="music-button" id="music-button" type="button" aria-pressed="false">
+                    <span id="music-label">♫ Włącz muzykę</span>
+                </button>
+            </div>
+        </section>
+    </div>
+
+    <audio id="loading-music" src="cdnloading1.ogg" autoplay loop preload="auto"></audio>
+
+    <script>
+        (function () {
+            var totalFiles = 0;
+            var filesNeeded = 0;
+            var progressBar = document.getElementById("progress-bar");
+            var progressTrack = document.getElementById("progress-track");
+            var progressLabel = document.getElementById("progress-label");
+            var loadingLabel = document.getElementById("loading-label");
+            var status = document.getElementById("status");
+            var music = document.getElementById("loading-music");
+            var musicButton = document.getElementById("music-button");
+            var musicLabel = document.getElementById("music-label");
+            var modeList = document.getElementById("modes-list");
+            var backgroundImages = [
+                "cdn_01.jpg",
+                "cdn_02.jpg",
+                "cdn_03.jpg",
+                "cdn_04.jpg",
+                "cdn_05.jpg",
+                "cdn_06.jpg",
+                "cdn_07.jpg",
+                "cdn_08.jpg"
+            ];
+            var backgroundIndex = 0;
+            var visibleBackground = document.getElementById("background-image-a");
+            var hiddenBackground = document.getElementById("background-image-b");
+            var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            var modeScrollPosition = 0;
+            var modeScrollDirection = 1;
+            var modePauseUntil = 0;
+            var previousFrameTime = 0;
+
+            function showNextBackground() {
+                var nextIndex = (backgroundIndex + 1) % backgroundImages.length;
+                var image = new Image();
+                image.onload = function () {
+                    hiddenBackground.style.backgroundImage = "url('" + backgroundImages[nextIndex] + "')";
+                    hiddenBackground.classList.add("is-visible");
+                    visibleBackground.classList.remove("is-visible");
+
+                    var previousBackground = visibleBackground;
+                    visibleBackground = hiddenBackground;
+                    hiddenBackground = previousBackground;
+                    backgroundIndex = nextIndex;
+                    window.setTimeout(showNextBackground, 12000);
+                };
+                image.onerror = function () {
+                    console.error("Could not load background image: " + backgroundImages[nextIndex]);
+                    window.setTimeout(showNextBackground, 12000);
+                };
+                image.src = backgroundImages[nextIndex];
+            }
+
+            window.setTimeout(showNextBackground, 12000);
+
+            function animateModes(timestamp) {
+                var maxScroll = modeList.scrollHeight - modeList.clientHeight;
+
+                if (!reduceMotion && maxScroll > 0) {
+                    if (document.hidden) {
+                        previousFrameTime = timestamp;
+                    } else if (modePauseUntil > timestamp) {
+                        previousFrameTime = timestamp;
+                    } else {
+                        var elapsed = previousFrameTime ? Math.min(timestamp - previousFrameTime, 50) : 0;
+                        modeScrollPosition += modeScrollDirection * elapsed * 0.018;
+
+                        if (modeScrollPosition >= maxScroll) {
+                            modeScrollPosition = maxScroll;
+                            modeScrollDirection = -1;
+                            modePauseUntil = timestamp + 650;
+                        } else if (modeScrollPosition <= 0) {
+                            modeScrollPosition = 0;
+                            modeScrollDirection = 1;
+                            modePauseUntil = timestamp + 650;
+                        }
+
+                        modeList.scrollTop = modeScrollPosition;
+                        previousFrameTime = timestamp;
+                    }
+                }
+
+                window.requestAnimationFrame(animateModes);
+            }
+
+            window.requestAnimationFrame(animateModes);
+
+            function setProgress(percent) {
+                var value = Math.max(0, Math.min(100, Math.round(percent)));
+                progressBar.style.width = value + "%";
+                progressTrack.setAttribute("aria-valuenow", String(value));
+                progressLabel.textContent = value + "%";
+            }
+
+            function updateProgress() {
+                if (totalFiles <= 0) return;
+                var downloaded = Math.max(0, totalFiles - filesNeeded);
+                setProgress((downloaded / totalFiles) * 100);
+                if (filesNeeded === 0) {
+                    loadingLabel.textContent = "Pobieranie zakończone";
+                } else {
+                    loadingLabel.textContent = "Pobieranie zawartości";
+                }
+            }
+
+            function setMusicState(isPlaying) {
+                musicButton.setAttribute("aria-pressed", isPlaying ? "true" : "false");
+                musicLabel.textContent = isPlaying ? "♫ Wyłącz muzykę" : "♫ Włącz muzykę";
+            }
+
+            function playMusic() {
+                music.volume = 0.2;
+                music.play().then(function () {
+                    setMusicState(true);
+                }).catch(function () {
+                    setMusicState(false);
+                });
+            }
+
+            window.GameDetails = function (servername, serverurl, mapname, maxplayers, steamid, gamemode) {
+                if (typeof servername === "string" && servername.trim()) {
+                    var serverName = servername.trim();
+                    document.getElementById("servername").textContent = serverName;
+                    document.title = serverName + " — ładowanie";
+                }
+                if (mapname) document.getElementById("mapname").textContent = mapname;
+                if (gamemode) document.getElementById("gamemode").textContent = gamemode;
+                playMusic();
+            };
+
+            window.SetPlayerDetails = function (details) {
+                if (!details || typeof details !== "object") return;
+                if (details.name) {
+                    document.getElementById("player-name").textContent = details.name;
+                }
+                if (details.avatarUrl) {
+                    var avatarUrl;
+                    try {
+                        avatarUrl = new URL(details.avatarUrl, window.location.href);
+                    } catch (error) {
+                        return;
+                    }
+                    if (avatarUrl.protocol !== "https:" && avatarUrl.protocol !== "http:") return;
+                    var avatarImage = document.getElementById("avatar-image");
+                    avatarImage.onload = function () {
+                        avatarImage.hidden = false;
+                        document.getElementById("avatar-fallback").hidden = true;
+                    };
+                    avatarImage.onerror = function () {
+                        avatarImage.hidden = true;
+                        document.getElementById("avatar-fallback").hidden = false;
+                    };
+                    avatarImage.src = avatarUrl.href;
+                }
+            };
+
+            window.SetFilesTotal = function (total) {
+                totalFiles = Math.max(0, Number(total) || 0);
+                filesNeeded = totalFiles;
+                updateProgress();
+                if (totalFiles > 0) status.textContent = "Przygotowywanie plików do pobrania…";
+            };
+
+            window.SetFilesNeeded = function (needed) {
+                filesNeeded = Math.max(0, Math.min(totalFiles, Number(needed) || 0));
+                updateProgress();
+            };
+
+            window.SetFilesRemaining = function (remaining) {
+                window.SetFilesNeeded(remaining);
+            };
+
+            window.DownloadingFile = function (fileName) {
+                if (fileName) status.textContent = "Pobieranie: " + fileName;
+            };
+
+            window.SetStatusChanged = function (newStatus) {
+                if (newStatus) status.textContent = newStatus;
+            };
+
+            music.addEventListener("playing", function () {
+                setMusicState(true);
+            });
+
+            music.addEventListener("pause", function () {
+                setMusicState(false);
+            });
+
+            musicButton.addEventListener("click", function () {
+                if (music.paused) {
+                    playMusic();
+                } else {
+                    music.pause();
+                }
+            });
+
+            playMusic();
+        }());
+    </script>
+</body>
+</html>
