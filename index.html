@@ -231,14 +231,16 @@
         .welcome-panel {
             display: grid;
             grid-template-columns: clamp(64px, 7vw, 88px) minmax(0, max-content);
+            grid-template-rows: auto auto;
             align-items: center;
             justify-content: center;
             gap: clamp(8px, 1vw, 14px);
-            padding: 81px 22px;
+            padding: 38px 22px;
         }
 
         .profile-avatar {
             display: grid;
+            grid-row: 1;
             width: clamp(64px, 7vw, 88px);
             height: clamp(64px, 7vw, 88px);
             flex: 0 0 auto;
@@ -285,6 +287,36 @@
             overflow: hidden;
             font-weight: 700;
             text-align: left;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .profile-stats {
+            display: grid;
+            min-width: 0;
+            grid-column: 1 / -1;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .profile-stat {
+            display: grid;
+            min-width: 0;
+            gap: 3px;
+            text-align: center;
+        }
+
+        .profile-stat span {
+            overflow: hidden;
+            color: var(--muted);
+            font-size: clamp(10px, .9vw, 12px);
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .profile-stat strong {
+            overflow: hidden;
+            font-size: clamp(11px, 1vw, 14px);
             text-overflow: ellipsis;
             white-space: nowrap;
         }
@@ -457,6 +489,9 @@
                 padding: 14px 12px;
             }
             .profile-avatar { width: 58px; height: 58px; }
+            .profile-stats { gap: 4px; }
+            .profile-stat span { font-size: 10px; }
+            .profile-stat strong { font-size: 11px; }
             .profile-greeting { font-size: 12px; }
             .profile-details h2 { font-size: 20px; }
             .mode-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -531,6 +566,20 @@
                         <p class="profile-greeting">Witamy!</p>
                         <h2 id="player-name">Oczekiwanie…</h2>
                     </div>
+                    <div class="profile-stats" aria-label="Statystyki gracza">
+                        <div class="profile-stat">
+                            <span>Czas gry</span>
+                            <strong id="player-playtime">—</strong>
+                        </div>
+                        <div class="profile-stat">
+                            <span>Punkty</span>
+                            <strong id="player-points">—</strong>
+                        </div>
+                        <div class="profile-stat">
+                            <span>Osiągnięcia</span>
+                            <strong id="player-achievements">—/—</strong>
+                        </div>
+                    </div>
                 </section>
 
                 <section class="panel server-info" aria-label="Informacje o serwerze">
@@ -593,6 +642,9 @@
             var musicButton = document.getElementById("music-button");
             var musicLabel = document.getElementById("music-label");
             var modeList = document.getElementById("modes-list");
+            var profileApiUrl = "https://cdn-data-base.cdn-studios.workers.dev/";
+            var profileRequestId = 0;
+            var statsRequestId = 0;
             var backgroundImages = [
                 "cdn_01.jpg",
                 "cdn_02.jpg",
@@ -603,8 +655,6 @@
                 "cdn_07.jpg",
                 "cdn_08.jpg"
             ];
-            var profileApiUrl = "https://cdn-data-base.cdn-studios.workers.dev/";
-            var profileRequestId = 0;
             var backgroundIndex = -1;
             var backgroundFailureCount = 0;
             var visibleBackground = document.getElementById("background-image-a");
@@ -706,6 +756,44 @@
                 musicLabel.textContent = isPlaying ? "♫ Wyłącz muzykę" : "♫ Włącz muzykę";
             }
 
+            function formatPlaytime(seconds) {
+                var totalMinutes = Math.floor(seconds / 60);
+                var hours = Math.floor(totalMinutes / 60);
+                var minutes = totalMinutes % 60;
+                return hours + " godz. " + minutes + " min";
+            }
+
+            function loadPlayerStats(steamId, requestId, attempt) {
+                fetch(profileApiUrl + "stats?steamid=" + encodeURIComponent(steamId))
+                    .then(function (response) {
+                        if (response.status === 404 && attempt < 12) {
+                            window.setTimeout(function () {
+                                if (requestId === statsRequestId) {
+                                    loadPlayerStats(steamId, requestId, attempt + 1);
+                                }
+                            }, 2500);
+                            return null;
+                        }
+                        if (!response.ok) {
+                            throw new Error("Player stats API returned HTTP " + response.status);
+                        }
+                        return response.json();
+                    })
+                    .then(function (stats) {
+                        if (!stats || requestId !== statsRequestId) return;
+                        document.getElementById("player-playtime").textContent =
+                            formatPlaytime(Number(stats.playSeconds));
+                        document.getElementById("player-points").textContent =
+                            Number(stats.points).toLocaleString("pl-PL");
+                        document.getElementById("player-achievements").textContent =
+                            Number(stats.achievementsUnlocked) + "/" + Number(stats.achievementsTotal);
+                    })
+                    .catch(function (error) {
+                        if (requestId !== statsRequestId) return;
+                        console.error("Could not load player statistics.", error);
+                    });
+            }
+
             function playMusic() {
                 music.volume = 0.2;
                 music.play().then(function () {
@@ -724,10 +812,12 @@
                 if (mapname) document.getElementById("mapname").textContent = mapname;
                 if (gamemode) document.getElementById("gamemode").textContent = gamemode;
                 var playerName = document.getElementById("player-name");
-                var requestId = ++profileRequestId;
+                var profileId = ++profileRequestId;
+                var statsId = ++statsRequestId;
                 var steamId = typeof steamid === "string" ? steamid.trim() : "";
                 if (/^\d{17}$/.test(steamId)) {
                     playerName.textContent = "Ładowanie profilu…";
+                    loadPlayerStats(steamId, statsId, 0);
                     fetch(profileApiUrl + "?steamid=" + encodeURIComponent(steamId))
                         .then(function (response) {
                             if (!response.ok) {
@@ -736,11 +826,11 @@
                             return response.json();
                         })
                         .then(function (profile) {
-                            if (requestId !== profileRequestId) return;
+                            if (profileId !== profileRequestId) return;
                             window.SetPlayerDetails(profile);
                         })
                         .catch(function (error) {
-                            if (requestId !== profileRequestId) return;
+                            if (profileId !== profileRequestId) return;
                             console.error("Could not load the Steam profile.", error);
                             playerName.textContent = "Gracz";
                         });
