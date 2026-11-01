@@ -757,7 +757,7 @@
 
             function setServerName(serverName) {
                 var serverNameElement = document.getElementById("servername");
-                var studioSuffix = serverName.match(/^(.*?)\s+CDN\s+STUDIOS$/i);
+                var studioSuffix = serverName.match(/^(.*?)\s+(CDN\s+STUDIOS)$/i);
                 if (!studioSuffix || !studioSuffix[1].trim()) {
                     serverNameElement.textContent = serverName;
                     return;
@@ -766,9 +766,7 @@
                 serverNameElement.textContent = "";
                 serverNameElement.appendChild(document.createTextNode(studioSuffix[1].trim()));
                 serverNameElement.appendChild(document.createElement("br"));
-                serverNameElement.appendChild(document.createTextNode("CDN"));
-                serverNameElement.appendChild(document.createElement("br"));
-                serverNameElement.appendChild(document.createTextNode("STUDIOS"));
+                serverNameElement.appendChild(document.createTextNode(studioSuffix[2]));
             }
 
             function formatPlaytime(seconds) {
