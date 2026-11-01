@@ -36,14 +36,37 @@
             position: fixed;
             z-index: 0;
             inset: 0;
-            background-color: #05080b;
-            background-position: center;
-            background-repeat: no-repeat;
-            background-size: cover;
             transform: scale(1.015);
         }
 
+        .background-image {
+            position: absolute;
+            inset: 0;
+            background-position: center;
+            background-size: cover;
+            background-repeat: no-repeat;
+            opacity: 0;
+            transform: scale(1.12) rotate(0.6deg);
+            transform-origin: center;
+            transition: opacity 1.5s ease-in-out;
+        }
+
+        .background-image.is-visible {
+            opacity: 1;
+            animation: background-drift 12s ease-in-out both;
+        }
+
+        @keyframes background-drift {
+            from { transform: scale(1.04) rotate(-0.6deg); }
+            to { transform: scale(1.12) rotate(0.6deg); }
+        }
+
         @media (prefers-reduced-motion: reduce) {
+            .background-image { transition: none; }
+            .background-image.is-visible {
+                animation: none;
+                transform: scale(1.05);
+            }
             .progress-bar.is-indeterminate { animation: none; transform: none; }
         }
 
@@ -487,6 +510,8 @@
 </head>
 <body>
     <div id="background" aria-hidden="true">
+        <div class="background-image" id="background-image-a"></div>
+        <div class="background-image" id="background-image-b"></div>
     </div>
     <div class="backdrop" aria-hidden="true"></div>
 
@@ -631,30 +656,50 @@
                 "cdn_08.jpg"
             ];
             var backgroundIndex = 0;
-            var background = document.getElementById("background");
+            var visibleBackground = document.getElementById("background-image-a");
+            var hiddenBackground = document.getElementById("background-image-b");
             var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
             var modeScrollPosition = 0;
             var modeScrollDirection = 1;
             var modePauseUntil = 0;
             var previousFrameTime = 0;
 
-            function changeBackground() {
-                var nextIndex = backgroundIndex;
+            function showNextBackground() {
+                var nextIndex = (backgroundIndex + 1) % backgroundImages.length;
                 var image = new Image();
                 image.onload = function () {
-                    background.style.backgroundImage = "url('" + image.src + "')";
-                    backgroundIndex = (nextIndex + 1) % backgroundImages.length;
-                    window.setTimeout(changeBackground, 8000);
+                    hiddenBackground.style.backgroundImage = "url('" + backgroundImages[nextIndex] + "')";
+                    hiddenBackground.classList.add("is-visible");
+                    visibleBackground.classList.remove("is-visible");
+
+                    var previousBackground = visibleBackground;
+                    visibleBackground = hiddenBackground;
+                    hiddenBackground = previousBackground;
+                    backgroundIndex = nextIndex;
+                    window.setTimeout(showNextBackground, 12000);
                 };
                 image.onerror = function () {
                     console.error("Could not load background image: " + backgroundImages[nextIndex]);
-                    backgroundIndex = (nextIndex + 1) % backgroundImages.length;
-                    window.setTimeout(changeBackground, 250);
+                    window.setTimeout(showNextBackground, 12000);
                 };
                 image.src = backgroundImages[nextIndex];
             }
 
-            changeBackground();
+            function loadInitialBackground() {
+                var image = new Image();
+                image.onload = function () {
+                    visibleBackground.style.backgroundImage = "url('" + backgroundImages[backgroundIndex] + "')";
+                    visibleBackground.classList.add("is-visible");
+                    window.setTimeout(showNextBackground, 12000);
+                };
+                image.onerror = function () {
+                    console.error("Could not load background image: " + backgroundImages[backgroundIndex]);
+                    window.setTimeout(loadInitialBackground, 2500);
+                };
+                image.src = backgroundImages[backgroundIndex];
+            }
+
+            loadInitialBackground();
 
             function animateModes(timestamp) {
                 var maxScroll = modeList.scrollHeight - modeList.clientHeight;
