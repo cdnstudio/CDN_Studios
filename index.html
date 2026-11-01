@@ -620,7 +620,7 @@
                 aria-valuemin="0"
                 aria-valuemax="100"
                 aria-valuenow="0">
-                <div class="progress-bar" id="progress-bar"></div>
+                <div class="progress-bar is-indeterminate" id="progress-bar"></div>
             </div>
             <div class="loading-bottom">
                 <p id="status" aria-live="polite">Oczekiwanie na połączenie z serwerem…</p>
@@ -637,6 +637,7 @@
         (function () {
             var totalFiles = 0;
             var filesNeeded = 0;
+            var observedDownloads = 0;
             var progressBar = document.getElementById("progress-bar");
             var progressTrack = document.getElementById("progress-track");
             var progressLabel = document.getElementById("progress-label");
@@ -742,11 +743,20 @@
             function updateProgress() {
                 if (totalFiles <= 0) {
                     progressBar.classList.add("is-indeterminate");
+                    progressBar.style.width = "";
                     progressTrack.removeAttribute("aria-valuenow");
                     progressLabel.textContent = "Łączenie…";
                     return;
                 }
-                var downloaded = Math.max(0, totalFiles - filesNeeded);
+                var downloaded = Math.min(totalFiles, Math.max(observedDownloads, totalFiles - filesNeeded));
+                if (downloaded === 0 && filesNeeded > 0) {
+                    progressBar.classList.add("is-indeterminate");
+                    progressBar.style.width = "";
+                    progressTrack.removeAttribute("aria-valuenow");
+                    progressLabel.textContent = "0%";
+                    loadingLabel.textContent = "Oczekiwanie na pliki";
+                    return;
+                }
                 setProgress((downloaded / totalFiles) * 100);
                 if (filesNeeded === 0) {
                     loadingLabel.textContent = "Pobieranie zakończone";
@@ -873,6 +883,7 @@
             window.SetFilesTotal = function (total) {
                 totalFiles = Math.max(0, Number(total) || 0);
                 filesNeeded = totalFiles;
+                observedDownloads = 0;
                 updateProgress();
                 if (totalFiles > 0) status.textContent = "Przygotowywanie plików do pobrania…";
             };
@@ -887,7 +898,11 @@
             };
 
             window.DownloadingFile = function (fileName) {
-                if (fileName) status.textContent = "Pobieranie: " + fileName;
+                if (fileName) {
+                    status.textContent = "Pobieranie: " + fileName;
+                    observedDownloads = Math.min(totalFiles, observedDownloads + 1);
+                    updateProgress();
+                }
             };
 
             window.SetStatusChanged = function (newStatus) {
