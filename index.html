@@ -42,9 +42,9 @@
         .background-image {
             position: absolute;
             inset: 0;
-            background-position: center;
-            background-size: cover;
-            background-repeat: no-repeat;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
             opacity: 0;
             transform: scale(1.12) rotate(0.6deg);
             transform-origin: center;
@@ -67,6 +67,7 @@
                 animation: none;
                 transform: scale(1.05);
             }
+            .progress-bar.is-indeterminate { animation: none; transform: none; }
         }
 
         .backdrop {
@@ -238,8 +239,8 @@
 
         .profile-avatar {
             display: grid;
-            width: 100%;
-            aspect-ratio: 1;
+            width: clamp(64px, 7vw, 88px);
+            height: clamp(64px, 7vw, 88px);
             flex: 0 0 auto;
             overflow: hidden;
             border: 3px solid var(--accent);
@@ -365,6 +366,16 @@
             transition: width .3s ease;
         }
 
+        .progress-bar.is-indeterminate {
+            width: 35%;
+            animation: progress-indeterminate 1.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes progress-indeterminate {
+            from { transform: translateX(-75%); }
+            to { transform: translateX(215%); }
+        }
+
         .loading-bottom {
             min-height: 26px;
             margin-top: 7px;
@@ -445,6 +456,7 @@
                 gap: 8px;
                 padding: 14px 12px;
             }
+            .profile-avatar { width: 58px; height: 58px; }
             .profile-greeting { font-size: 12px; }
             .profile-details h2 { font-size: 20px; }
             .mode-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -463,8 +475,8 @@
 </head>
 <body>
     <div id="background" aria-hidden="true">
-        <div class="background-image is-visible" id="background-image-a" style="background-image: url('cdn_01.jpg')"></div>
-        <div class="background-image" id="background-image-b"></div>
+        <img class="background-image" id="background-image-a" alt="">
+        <img class="background-image" id="background-image-b" alt="">
     </div>
     <div class="backdrop" aria-hidden="true"></div>
 
@@ -591,7 +603,10 @@
                 "cdn_07.jpg",
                 "cdn_08.jpg"
             ];
-            var backgroundIndex = 0;
+            var profileApiUrl = "https://cdn-data-base.cdn-studios.workers.dev/";
+            var profileRequestId = 0;
+            var backgroundIndex = -1;
+            var backgroundFailureCount = 0;
             var visibleBackground = document.getElementById("background-image-a");
             var hiddenBackground = document.getElementById("background-image-b");
             var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -603,8 +618,9 @@
             function showNextBackground() {
                 var nextIndex = (backgroundIndex + 1) % backgroundImages.length;
                 var image = new Image();
+                var imageUrl = new URL(backgroundImages[nextIndex], document.baseURI).href;
                 image.onload = function () {
-                    hiddenBackground.style.backgroundImage = "url('" + backgroundImages[nextIndex] + "')";
+                    hiddenBackground.src = imageUrl;
                     hiddenBackground.classList.add("is-visible");
                     visibleBackground.classList.remove("is-visible");
 
@@ -612,16 +628,22 @@
                     visibleBackground = hiddenBackground;
                     hiddenBackground = previousBackground;
                     backgroundIndex = nextIndex;
+                    backgroundFailureCount = 0;
                     window.setTimeout(showNextBackground, 12000);
                 };
                 image.onerror = function () {
-                    console.error("Could not load background image: " + backgroundImages[nextIndex]);
-                    window.setTimeout(showNextBackground, 12000);
+                    console.error("Could not load background image: " + imageUrl);
+                    backgroundFailureCount++;
+                    if (backgroundFailureCount < backgroundImages.length) {
+                        window.setTimeout(showNextBackground, 250);
+                    } else {
+                        console.error("No loading screen background images could be loaded.");
+                    }
                 };
-                image.src = backgroundImages[nextIndex];
+                image.src = imageUrl;
             }
 
-            window.setTimeout(showNextBackground, 12000);
+            window.setTimeout(showNextBackground, 0);
 
             function animateModes(timestamp) {
                 var maxScroll = modeList.scrollHeight - modeList.clientHeight;
@@ -657,13 +679,19 @@
 
             function setProgress(percent) {
                 var value = Math.max(0, Math.min(100, Math.round(percent)));
+                progressBar.classList.remove("is-indeterminate");
                 progressBar.style.width = value + "%";
                 progressTrack.setAttribute("aria-valuenow", String(value));
                 progressLabel.textContent = value + "%";
             }
 
             function updateProgress() {
-                if (totalFiles <= 0) return;
+                if (totalFiles <= 0) {
+                    progressBar.classList.add("is-indeterminate");
+                    progressTrack.removeAttribute("aria-valuenow");
+                    progressLabel.textContent = "Łączenie…";
+                    return;
+                }
                 var downloaded = Math.max(0, totalFiles - filesNeeded);
                 setProgress((downloaded / totalFiles) * 100);
                 if (filesNeeded === 0) {
@@ -695,6 +723,30 @@
                 }
                 if (mapname) document.getElementById("mapname").textContent = mapname;
                 if (gamemode) document.getElementById("gamemode").textContent = gamemode;
+                var playerName = document.getElementById("player-name");
+                var requestId = ++profileRequestId;
+                var steamId = typeof steamid === "string" ? steamid.trim() : "";
+                if (/^\d{17}$/.test(steamId)) {
+                    playerName.textContent = "Ładowanie profilu…";
+                    fetch(profileApiUrl + "?steamid=" + encodeURIComponent(steamId))
+                        .then(function (response) {
+                            if (!response.ok) {
+                                throw new Error("Steam profile API returned HTTP " + response.status);
+                            }
+                            return response.json();
+                        })
+                        .then(function (profile) {
+                            if (requestId !== profileRequestId) return;
+                            window.SetPlayerDetails(profile);
+                        })
+                        .catch(function (error) {
+                            if (requestId !== profileRequestId) return;
+                            console.error("Could not load the Steam profile.", error);
+                            playerName.textContent = "Gracz";
+                        });
+                } else {
+                    playerName.textContent = "Gracz";
+                }
                 playMusic();
             };
 
