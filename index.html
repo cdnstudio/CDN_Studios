@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#05080b">
     <meta name="robots" content="noindex, nofollow">
-    <title>Ładowanie serwera</title>
+    <title>[Ciąg Dalszej Nostalgii] CDN Studios — ładowanie</title>
     <style>
         :root {
             color-scheme: dark;
@@ -115,13 +115,17 @@
         h1 {
             margin: 0;
             color: var(--accent);
-            font-size: clamp(24px, 3.5vw, 58px);
+            font-size: clamp(24px, 3.5vw, 46px);
             font-weight: 800;
             letter-spacing: .035em;
             line-height: 1.1;
             text-align: center;
             text-shadow: 0 0 15px rgba(0, 170, 255, .24);
             text-transform: uppercase;
+        }
+
+        .server-header h1 {
+            transform: translateY(-1px);
         }
 
         .columns {
@@ -416,24 +420,6 @@
             white-space: nowrap;
         }
 
-        .music-button {
-            flex: 0 0 auto;
-            padding: 5px 10px;
-            border: 1px solid rgba(0, 170, 255, .7);
-            border-radius: 6px;
-            background: rgba(0, 170, 255, .12);
-            color: #fff;
-            cursor: pointer;
-            font: inherit;
-            font-size: 11px;
-        }
-
-        .music-button:hover, .music-button:focus-visible {
-            background: rgba(0, 170, 255, .28);
-            outline: 2px solid var(--accent);
-            outline-offset: 2px;
-        }
-
         @media (max-width: 760px) {
             body {
                 height: auto;
@@ -510,7 +496,7 @@
 
     <div class="layout">
         <header class="panel server-header">
-            <h1 id="servername">Ładowanie serwera...</h1>
+            <h1 id="servername">[Ciąg Dalszej Nostalgii] CDN Studios</h1>
         </header>
 
         <main class="columns">
@@ -534,11 +520,11 @@
                     <div class="mode-item">You Touched It Last</div>
                     <div class="mode-item">The Hidden</div>
                     <div class="mode-item">Cops And Runners</div>
+                    <div class="mode-item">Slendytubbies</div>
                     <div class="mode-item">SCP Classic Breach</div>
                     <div class="mode-item">Wario-Ware</div>
                     <div class="mode-item">Dropzone</div>
                     <div class="mode-item">Puzzle [AWARIA]</div>
-                    <div class="mode-item">Slendytubbies [WYŁĄCZONE]</div>
                     <div class="mode-item">Ragdoll Combat [WYŁĄCZONE]</div>
                     <div class="mode-item">Guess Who [WYŁĄCZONE]</div>
                     <div class="mode-item">Smash [WYŁĄCZONE]</div>
@@ -589,9 +575,8 @@
                     <li>Zakaz używania cheatów i wykorzystywania błędów gry.</li>
                     <li>Nie spamuj na czacie głosowym ani tekstowym.</li>
                     <li>Przestrzegaj zasad aktualnego trybu gry.</li>
-                    <li>Serwer nie jest przeznaczony dla społeczności furry. Treści z tym i promowanie tego fandomu może skutkować karą od administracji.</li>
-                    <li>Prosimy o nieporuszanie tematów politycznych, światopoglądowych, religijnych oraz orientacji seksualnych.</li>
-                    <li>Zakaz sprayów 18+.</li>
+                    <li>Nie publikuj treści obraźliwych ani nieodpowiednich.</li>
+                    <li>W razie problemu skontaktuj się z administracją.</li>
                     <li>Baw się dobrze!</li>
                 </ol>
             </section>
@@ -614,9 +599,6 @@
             </div>
             <div class="loading-bottom">
                 <p id="status" aria-live="polite">Oczekiwanie na połączenie z serwerem…</p>
-                <button class="music-button" id="music-button" type="button" aria-pressed="false">
-                    <span id="music-label">♫ Włącz muzykę</span>
-                </button>
             </div>
         </section>
     </div>
@@ -636,8 +618,6 @@
             var loadingLabel = document.getElementById("loading-label");
             var status = document.getElementById("status");
             var music = document.getElementById("loading-music");
-            var musicButton = document.getElementById("music-button");
-            var musicLabel = document.getElementById("music-label");
             var modeList = document.getElementById("modes-list");
             var profileApiUrl = "https://cdn-data-base.cdn-studios.workers.dev/";
             var profileRequestId = 0;
@@ -751,25 +731,6 @@
                 }
             }
 
-            function setMusicState(isPlaying) {
-                musicButton.setAttribute("aria-pressed", isPlaying ? "true" : "false");
-                musicLabel.textContent = isPlaying ? "♫ Wyłącz muzykę" : "♫ Włącz muzykę";
-            }
-
-            function setServerName(serverName) {
-                var serverNameElement = document.getElementById("servername");
-                var studioSuffix = serverName.match(/^(.*?)\s+(CDN\s+STUDIOS)$/i);
-                if (!studioSuffix || !studioSuffix[1].trim()) {
-                    serverNameElement.textContent = serverName;
-                    return;
-                }
-
-                serverNameElement.textContent = "";
-                serverNameElement.appendChild(document.createTextNode(studioSuffix[1].trim()));
-                serverNameElement.appendChild(document.createElement("br"));
-                serverNameElement.appendChild(document.createTextNode(studioSuffix[2]));
-            }
-
             function formatPlaytime(seconds) {
                 var totalMinutes = Math.floor(seconds / 60);
                 var hours = Math.floor(totalMinutes / 60);
@@ -810,19 +771,10 @@
 
             function playMusic() {
                 music.volume = 0.2;
-                music.play().then(function () {
-                    setMusicState(true);
-                }).catch(function () {
-                    setMusicState(false);
-                });
+                music.play().catch(function () {});
             }
 
             window.GameDetails = function (servername, serverurl, mapname, maxplayers, steamid, gamemode) {
-                if (typeof servername === "string" && servername.trim()) {
-                    var serverName = servername.trim();
-                    setServerName(serverName);
-                    document.title = serverName + " — ładowanie";
-                }
                 if (mapname) document.getElementById("mapname").textContent = mapname;
                 if (gamemode) document.getElementById("gamemode").textContent = gamemode;
                 var playerName = document.getElementById("player-name");
@@ -851,7 +803,6 @@
                 } else {
                     playerName.textContent = "Gracz";
                 }
-                playMusic();
             };
 
             window.SetPlayerDetails = function (details) {
@@ -914,22 +865,6 @@
                     }
                 }
             };
-
-            music.addEventListener("playing", function () {
-                setMusicState(true);
-            });
-
-            music.addEventListener("pause", function () {
-                setMusicState(false);
-            });
-
-            musicButton.addEventListener("click", function () {
-                if (music.paused) {
-                    playMusic();
-                } else {
-                    music.pause();
-                }
-            });
 
             playMusic();
         }());
